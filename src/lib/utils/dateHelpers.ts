@@ -1,30 +1,28 @@
-import { isWeekend, setHours, setMinutes, setSeconds, isAfter, parseISO } from 'date-fns';
+import { isWeekend, setHours, setMinutes, setSeconds, isAfter, isBefore, addDays, startOfDay } from 'date-fns';
 
 /**
- * Checks if a requested supply change is valid.
- * Constraints:
- * 1. Target date cannot be Saturday or Sunday.
- * 2. Request must be made before 10:30 AM (local time) on the day before.
- * 
- * @param targetDateStr YYYY-MM-DD
- * @param requestTime Date object representing when the request was made
+ * Validates supply change requests.
+ * Rule 1: No requests on Sat & Sun.
+ * Rule 2: Next day supply changes must be made before 10:30 AM of the previous day.
  */
-export function isValidSupplyRequest(targetDateStr: string, requestTime = new Date()): boolean {
-  const targetDate = parseISO(targetDateStr);
-
-  // 1. Cannot be a weekend
-  if (isWeekend(targetDate)) {
-    return false;
+export function isValidSupplyRequest(currentTime = new Date()): { isValid: boolean; reason?: string } {
+  // 1. No requests on Sat & Sun
+  if (isWeekend(currentTime)) {
+    return { 
+      isValid: false, 
+      reason: 'Support office is closed on weekends. No requests accepted on Saturday or Sunday.' 
+    };
   }
 
-  // 2. Must be before 10:30 AM
-  const cutoffTime = setSeconds(setMinutes(setHours(requestTime, 10), 30), 0);
+  // 2. Before 10:30 AM cutoff
+  const cutoffTime = setSeconds(setMinutes(setHours(startOfDay(currentTime), 10), 30), 0);
   
-  // If the current time is strictly after the 10:30 boundary on the requested day
-  // (In practice, this means we check if they're making it before 10:30 AM today for tomorrow)
-  if (isAfter(requestTime, cutoffTime)) {
-    return false;
+  if (isAfter(currentTime, cutoffTime)) {
+    return { 
+      isValid: false, 
+      reason: 'Daily cutoff time (10:30 AM) has passed. Requests must be placed earlier for next-day delivery.' 
+    };
   }
 
-  return true;
+  return { isValid: true };
 }
